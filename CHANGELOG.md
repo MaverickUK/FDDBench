@@ -4,6 +4,9 @@ All notable changes to FDDBench. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+### Fixed
+- CI may create releases (`contents: write`).
+
 ## [0.3.2] - 2026-11-06
 
 ### Fixed

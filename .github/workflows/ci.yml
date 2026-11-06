@@ -22,6 +22,8 @@ jobs:
   dos:
     name: Build for DOS and smoke test in DOSBox
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # The release on a tag
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq fpc nasm dosbox mtools zip
