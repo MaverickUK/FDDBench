@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+env:
+  FPC_VERSION: 3.2.2
+
+jobs:
+  unit-tests:
+    name: Unit tests (Free Pascal, Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: scripts/check-version.sh ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq fpc
+      - run: make test
+
+  dos:
+    name: Build for DOS and smoke test in DOSBox
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq fpc dosbox mtools
+
+      - name: Cache i8086-msdos cross compiler
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: ~/fpc-msdos
+          key: fpc-${{ env.FPC_VERSION }}-i8086-msdos-large-v1
+
+      - name: Build i8086-msdos cross compiler
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          curl -sSL -o fpc-src.tar.gz \
+            "https://downloads.sourceforge.net/project/freepascal/Source/${FPC_VERSION}/fpc-${FPC_VERSION}.source.tar.gz"
+          tar xzf fpc-src.tar.gz
+          make -C "fpc-${FPC_VERSION}" crossall crossinstall \
+            CPU_TARGET=i8086 OS_TARGET=msdos \
+            CROSSOPT="-WmLarge -CX -XX" BINUTILSPREFIX= \
+            INSTALL_PREFIX="$HOME/fpc-msdos"
+
+      - run: make
+      - run: make build/disk144.img
+      - name: Smoke test
+        env:
+          DOSBOX_X: dosbox
+        run: scripts/dosbox.sh smoke
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fddbench-dos
+          path: build/dos/FDDBENCH.EXE
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p dist && cp build/dos/FDDBENCH.EXE README.md CHANGELOG.md dist/
+          (cd dist && zip -q "../FDDBench-${GITHUB_REF_NAME#v}.zip" *)
+          gh release create "$GITHUB_REF_NAME" "FDDBench-${GITHUB_REF_NAME#v}.zip" --title "FDDBench ${GITHUB_REF_NAME#v}" --notes "See CHANGELOG.md"

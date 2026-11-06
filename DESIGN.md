@@ -35,7 +35,7 @@ It was written to show off [FDDSynthPro](https://github.com/MaverickUK/FDDSynthP
  Esc stop   Space pause   F1 help   F2 scenarios   F3 benchmark   F10 log
 ```
 
-**The map.** One cell is three sectors, so a track is six cells and a cylinder is twelve (head 0, then head 1). With five cylinders a row, sixteen rows hold a 1.44 MB disk. Three divides every PC format's sectors per track (9, 15, 18), so the same map fits 360 KB (40 cylinders: 8 rows of 10), 720 KB and 1.2 MB disks.
+**The map.** One cell is three sectors, so a track is six cells and a cylinder is twelve (head 0, then head 1). With five cylinders a row, sixteen rows hold a 1.44 MB disk. Three divides every PC format's sectors per track (9, 15, 18), so the same map fits 360 KB (40 cylinders: 4 rows of 10), 720 KB and 1.2 MB disks. Formats with more sectors (1.68 MB DMF, 2.88 MB) get six or more sectors a cell, to stay within 16 rows.
 
 A cell is drawn as soon as its sectors are done:
 

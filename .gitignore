@@ -1,0 +1,5 @@
+build/
+*.ppu
+*.o
+*.a
+*.map
