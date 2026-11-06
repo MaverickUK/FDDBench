@@ -26,6 +26,13 @@ function MsText(us:longint):string;
 function RpmText(periodUs:longint):string;
 { A time in revolutions: "1.05 rev" }
 function RevsText(us, periodUs:longint):string;
+{ The PC's timer against a reference: hundredths of a percent fast (+) or
+  slow (-), from what it measured over a reference interval }
+function TimerError(measuredUs, referenceUs:longint):integer;
+{ A time measured with a timer that error hundredths of a percent fast,
+  corrected: us * 10000 / (10000 + error), in integers }
+function CorrectUs(us:longint; error:integer):longint;
+function TimerErrorText(error:integer):string;
 function MedianOf3(a, b, c:longint):longint;
 { The median of the first n values; sorts them }
 function Median(var values:array of longint; n:integer):longint;
@@ -122,6 +129,43 @@ begin
   end;
   hundredths := ( us * 100 + periodUs div 2 ) div periodUs;
   RevsText := IntText(hundredths div 100) + '.' + Pad2(hundredths mod 100) + ' rev';
+end;
+
+function TimerError(measuredUs, referenceUs:longint):integer;
+var
+  diff, e:longint;
+begin
+  if ( referenceUs < 100 ) then begin
+    TimerError := 0;
+    exit;
+  end;
+  { Rounded on the size, so fast and slow round alike }
+  diff := abs(measuredUs - referenceUs);
+  e := ( diff * 100 + referenceUs div 200 ) div ( referenceUs div 100 );
+  if ( measuredUs < referenceUs ) then e := -e;
+  TimerError := e;
+end;
+
+function CorrectUs(us:longint; error:integer):longint;
+var
+  d:longint;
+begin
+  if ( us < 0 ) or ( error = 0 ) then begin
+    CorrectUs := us;
+    exit;
+  end;
+  d := 10000 + error;
+  CorrectUs := us - ( us div d ) * error - ( ( us mod d ) * error ) div d;
+end;
+
+function TimerErrorText(error:integer):string;
+var
+  sign:string;
+  a:integer;
+begin
+  if ( error < 0 ) then sign := '-' else sign := '+';
+  a := abs(error);
+  TimerErrorText := sign + IntText(a div 100) + '.' + Pad2(a mod 100) + '%';
 end;
 
 function MedianOf3(a, b, c:longint):longint;

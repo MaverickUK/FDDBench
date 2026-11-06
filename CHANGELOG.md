@@ -4,6 +4,14 @@ All notable changes to FDDBench. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-06
+
+### Added
+- **The benchmark checks the PC's timer** against the CMOS clock (its own 32 kHz crystal) for 5 seconds before it starts, shows how far off it is ("PC timer +1.55%"), and corrects every result by it. On the Evesham, the first real PC to run FDDBench, the rotation came out at 295.4 RPM (203.1 ms) where the drive turns at 300 by its own clock: either that PC's timer runs fast, which some clone boards' do, or FDDBench's arithmetic is out, and this says which. In DOSBox it reads +0.00%. An XT has no CMOS clock: it says so, and corrects nothing.
+
+### Changed
+- The benchmark's note on seek times moved to the status line, making room for the timer's result.
+
 ### Fixed
 - CI may create releases (`contents: write`).
 

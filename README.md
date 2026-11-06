@@ -50,6 +50,7 @@ Every run is logged to `FDDBENCH.LOG` beside the program, with the time of day, 
 | Full stroke | The same, first cylinder to last | |
 | Average access | 50 random single sectors | About half a revolution plus the seek |
 | Errors / retries | Reads the BIOS gave up on, and those that needed a second try | 0 / 0 |
+| PC timer | 5 seconds of the CMOS clock (its own crystal) timed with the PC's timer: every result above is corrected by the difference | Within 0.1%, though some clone boards' timers are 1-2% out |
 
 Run it on the same PC with a real drive and with an emulated one to compare them: a slow track change or a missed revolution shows up in the sequential read's revolutions a track.
 
@@ -61,7 +62,7 @@ It runs on any PC from an 8088 up, in text mode, on CGA, EGA, VGA or MDA.
 
 ## Status
 
-Version 0.3.2 has the scenarios, the map, the benchmark, write and verify, and the disk-change check. Next, from the [design](DESIGN.md): themes, help, and a demo video.
+Version 0.4.0 has the scenarios, the map, the benchmark, write and verify, and the disk-change check. Next, from the [design](DESIGN.md): themes, help, and a demo video.
 
 ## Building
 

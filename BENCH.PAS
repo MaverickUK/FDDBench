@@ -30,6 +30,8 @@ type
     Errors:longint;
     Retries:longint;
     Complete:boolean;        { False if stopped with Esc }
+    TimerChecked:boolean;    { Against the CMOS clock; false on an XT }
+    TimerErr:integer;        { The PC's timer, hundredths of a percent fast }
   end;
 
   TResultLine = record
@@ -39,7 +41,8 @@ type
   end;
 
 const
-  ResultLines = 6;
+  ResultLines = 7;
+  TimerCheckSeconds = 5;
   RotationReads = 21;
   RealPeriodUs = 100000;   { Faster than 600 RPM isn't a floppy drive: revolutions mean nothing }
   AccessReads = 50;
@@ -194,6 +197,7 @@ end;
 procedure RunBenchmark(drive:byte; var r:TBenchResult);
 var
   retriesBefore:longint;
+  us:longint;
 begin
   benchDrive := drive;
   Stopped := false;
@@ -209,6 +213,15 @@ begin
 
   ClearCells;
   DrawMap;
+  { The PC's timer against the CMOS clock, so a timer that runs fast or
+    slow (some clone boards' do) doesn't skew every result }
+  testName := 'Timer check';
+  Progress('against the CMOS clock, ' + IntText(TimerCheckSeconds) + ' s');
+  us := TimeCmosSeconds(TimerCheckSeconds);
+  r.TimerChecked := us > 0;
+  if ( r.TimerChecked ) then r.TimerErr := TimerError(us, longint(TimerCheckSeconds) * 1000000) else r.TimerErr := 0;
+  CheckStop;
+
   r.PeriodUs := MeasureRotation;
   if not Stopped then begin
     testName := 'Track-to-track';
@@ -224,6 +237,11 @@ begin
     DrawMap;
     MeasureSequential(r);
   end;
+  r.PeriodUs := CorrectUs(r.PeriodUs, r.TimerErr);
+  r.SequentialUs := CorrectUs(r.SequentialUs, r.TimerErr);
+  r.TrackToTrackUs := CorrectUs(r.TrackToTrackUs, r.TimerErr);
+  r.FullStrokeUs := CorrectUs(r.FullStrokeUs, r.TimerErr);
+  r.AccessUs := CorrectUs(r.AccessUs, r.TimerErr);
   r.Errors := errors;
   r.Retries := Retries - retriesBefore;
   r.Complete := not Stopped;
@@ -281,6 +299,18 @@ begin
          line.Name := 'Average access';
          line.Value := UsOrDash(r.AccessUs);
          if ( r.PeriodUs >= RealPeriodUs ) then line.Note := RevsNote(r.AccessUs, r.PeriodUs);
+       end;
+    6: begin
+         line.Name := 'PC timer';
+         if not r.TimerChecked then begin
+           line.Value := '-';
+           line.Note := 'no CMOS clock to check it against';
+         end
+         else begin
+           line.Value := TimerErrorText(r.TimerErr);
+           if ( r.TimerErr = 0 ) then line.Note := 'against the CMOS clock'
+           else line.Note := 'against the CMOS clock: corrected';
+         end;
        end;
     5: begin
          line.Name := 'Errors / retries';

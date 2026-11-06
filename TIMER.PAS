@@ -26,6 +26,13 @@ procedure StopTimer;
 procedure GetTime(var t:TTime);
 function SinceUs(var t:TTime):longint;
 function SinceMs(var t:TTime):longint;
+{ The CMOS clock's seconds register (an AT's real-time clock, on its own
+  32 kHz crystal); 255 when an update is in progress. An XT has no CMOS
+  clock: the port reads back the same value for ever }
+function CmosSeconds:byte;
+{ PIT microseconds across `seconds` whole CMOS seconds (from one second
+  ticking over to another), or -1 if the CMOS clock doesn't tick }
+function TimeCmosSeconds(seconds:byte):longint;
 
 { --------- implementation --------- }
 implementation
@@ -92,6 +99,58 @@ end;
 function SinceMs(var t:TTime):longint;
 begin
   SinceMs := SinceUs(t) div 1000;
+end;
+
+function CmosSeconds:byte;
+var
+  s:byte;
+begin
+  asm cli end;
+  port[$70] := $0A;
+  if ( port[$71] and $80 ) <> 0 then s := 255  { Updating }
+  else begin
+    port[$70] := $00;
+    s := port[$71];
+  end;
+  asm sti end;
+  CmosSeconds := s;
+end;
+
+{ Waits for the seconds register to read a value other than `second` (and
+  not mid-update), then sets `second` to it; false after 2.5 s, so a PC
+  with no CMOS clock (an XT: the port reads the same, or "updating", for
+  ever) never hangs here }
+function WaitTick(var second:byte; var at:TTime):boolean;
+var
+  start:TTime;
+  s:byte;
+begin
+  GetTime(start);
+  repeat
+    s := CmosSeconds;
+    if ( s <> 255 ) and ( s <> second ) then begin
+      GetTime(at);
+      second := s;
+      WaitTick := true;
+      exit;
+    end;
+  until SinceUs(start) > 2500000;
+  WaitTick := false;
+end;
+
+function TimeCmosSeconds(seconds:byte):longint;
+var
+  t0, t1:TTime;
+  s:byte;
+  i:integer;
+begin
+  TimeCmosSeconds := -1;
+  s := CmosSeconds;
+  if not WaitTick(s, t0) then exit;  { From the start of a second }
+  t1 := t0;
+  for i := 1 to seconds do
+    if not WaitTick(s, t1) then exit;
+  TimeCmosSeconds := TimeDiffUs(t0.Ticks, t0.Counts, t1.Ticks, t1.Counts);
 end;
 
 begin

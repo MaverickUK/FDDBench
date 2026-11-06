@@ -311,6 +311,15 @@ begin
   CheckStr('revs', '1.05 rev', RevsText(210000, 200000));
   CheckStr('revs small', '0.11 rev', RevsText(22222, 200000));
   CheckStr('revs no period', '-', RevsText(1000, 0));
+  CheckInt('timer 1.55% fast', 155, TimerError(5077500, 5000000));
+  CheckInt('timer exact', 0, TimerError(5000000, 5000000));
+  CheckInt('timer slow', -20, TimerError(4990000, 5000000));
+  CheckInt('corrected period', 200000, CorrectUs(203100, 155));
+  CheckInt('corrected long', 48000000, CorrectUs(48744000, 155));
+  CheckInt('corrected none', 12345, CorrectUs(12345, 0));
+  CheckInt('corrected slow', 200000, CorrectUs(199600, -20));
+  CheckStr('timer text', '+1.55%', TimerErrorText(155));
+  CheckStr('timer text slow', '-0.20%', TimerErrorText(-20));
   CheckInt('ticks to us', 54925, TimeDiffUs(10, 0, 11, 0));
   CheckInt('counts to us', 838, TimeDiffUs(10, 0, 10, 1000));
   CheckInt('midnight', 54925, TimeDiffUs(1573039, 0, 0, 0));

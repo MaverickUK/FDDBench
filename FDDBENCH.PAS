@@ -446,12 +446,13 @@ begin
     DrawMapText(4 + i * 2, PadRight(line.Name, 22) + PadRight(line.Value, 16) + line.Note, ColText);
     Log('  ' + PadRight(line.Name, 20) + PadRight(line.Value, 14) + line.Note);
   end;
-  DrawMapText(5 + ResultLines * 2, 'Seek times are to the nearest sector: the gap from one read to the next.', ColNotYet);
+
   Log('Benchmark: ' + text);
   FlushLog;
   DrawHeading('Benchmark results');
-  DrawStatus(0, '');
+  DrawStatus(0, 'Seek times are to the nearest sector: the gap from one read to the next.');
   DrawStatus(1, '');
+  DrawStatus(2, '');
 end;
 
 { ////////////////// Menu ////////////////// }
