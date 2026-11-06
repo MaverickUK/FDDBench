@@ -4,6 +4,11 @@ All notable changes to FDDBench. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-06
+
+### Fixed
+- **Timings on the Evesham read 1.55% long, and the timer check couldn't see it:** checked against FDDSynthPro's own crystal (its log times every step to the microsecond), FDDBench's rotation read 203.1 ms for 200.0, its track-to-track 33.2 for 32.74 and its full stroke 439.5 for 432.75, while its times over a minute agreed with the drive's to 0.16%. That PC's timer runs fast, and something (its BIOS) keeps the BIOS tick count at 0040:006C in step with the CMOS clock. FDDBench took its ticks from that count, so 0.4.0's timer check, which used them too, would have read about +0.00%. FDDBench now counts the timer's ticks itself, in its own INT 08h handler, which then passes each one on to the BIOS's, so every time it measures is the timer's alone, and the timer check corrects it. The check also times the BIOS's count, and when the two differ the result says so: "PC timer +1.55%, corrected; BIOS clock +0.00%".
+
 ## [0.4.0] - 2026-11-06
 
 ### Added

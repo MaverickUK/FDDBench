@@ -50,7 +50,7 @@ Every run is logged to `FDDBENCH.LOG` beside the program, with the time of day, 
 | Full stroke | The same, first cylinder to last | |
 | Average access | 50 random single sectors | About half a revolution plus the seek |
 | Errors / retries | Reads the BIOS gave up on, and those that needed a second try | 0 / 0 |
-| PC timer | 5 seconds of the CMOS clock (its own crystal) timed with the PC's timer: every result above is corrected by the difference | Within 0.1%, though some clone boards' timers are 1-2% out |
+| PC timer | 5 seconds of the CMOS clock (its own crystal) timed with the PC's timer: every result above is corrected by the difference. FDDBench counts the timer's ticks itself; if the BIOS's clock disagrees (some BIOSes keep it in step with the CMOS clock), the note gives the BIOS's figure too | Within 0.1%, though some clone boards' timers are 1-2% out (the Evesham's: 1.55%) |
 
 Run it on the same PC with a real drive and with an emulated one to compare them: a slow track change or a missed revolution shows up in the sequential read's revolutions a track.
 

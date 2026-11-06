@@ -82,7 +82,7 @@ F3 runs the benchmark: read only, so any disk will do. Each test is repeated and
 | Average access | Reads at random cylinders and sectors |
 | Sequential | Reads the whole disk a track at a time (KB/s) |
 
-Times come from the PIT (the 8253's channel 0, latched), not the BIOS tick: 55 ms ticks are too coarse for a step of 3 ms. The results are compared with what a real drive of the type should give (300 RPM, 3 ms track-to-track for a 1.44 MB drive), so a slow or noisy result stands out.
+Times come from the PIT (the 8253's channel 0, latched), not the BIOS tick: 55 ms ticks are too coarse for a step of 3 ms. The whole ticks are FDDBench's own too, counted by its INT 08h handler before it chains to the BIOS's: a BIOS may keep its count at 0040:006C in step with the CMOS clock, so a fast timer (the Evesham's, 1.55%) shows over short times but not long ones, and the timer check, made with the BIOS's count, would miss it. The results are compared with what a real drive of the type should give (300 RPM, 3 ms track-to-track for a 1.44 MB drive), so a slow or noisy result stands out.
 
 ## The log
 

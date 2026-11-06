@@ -32,6 +32,7 @@ type
     Complete:boolean;        { False if stopped with Esc }
     TimerChecked:boolean;    { Against the CMOS clock; false on an XT }
     TimerErr:integer;        { The PC's timer, hundredths of a percent fast }
+    BiosTimerErr:integer;    { The BIOS's tick count, the same way: kept in step with the CMOS clock on some PCs }
   end;
 
   TResultLine = record
@@ -197,7 +198,7 @@ end;
 procedure RunBenchmark(drive:byte; var r:TBenchResult);
 var
   retriesBefore:longint;
-  us:longint;
+  us, biosUs:longint;
 begin
   benchDrive := drive;
   Stopped := false;
@@ -214,12 +215,18 @@ begin
   ClearCells;
   DrawMap;
   { The PC's timer against the CMOS clock, so a timer that runs fast or
-    slow (some clone boards' do) doesn't skew every result }
+    slow (some clone boards' do) doesn't skew every result. The timer's own
+    ticks (Timer's handler), not the BIOS's count, which some BIOSes keep in
+    step with the CMOS clock }
   testName := 'Timer check';
   Progress('against the CMOS clock, ' + IntText(TimerCheckSeconds) + ' s');
-  us := TimeCmosSeconds(TimerCheckSeconds);
-  r.TimerChecked := us > 0;
-  if ( r.TimerChecked ) then r.TimerErr := TimerError(us, longint(TimerCheckSeconds) * 1000000) else r.TimerErr := 0;
+  r.TimerChecked := TimeCmosSeconds(TimerCheckSeconds, us, biosUs);
+  r.TimerErr := 0;
+  r.BiosTimerErr := 0;
+  if ( r.TimerChecked ) then begin
+    r.TimerErr := TimerError(us, longint(TimerCheckSeconds) * 1000000);
+    r.BiosTimerErr := TimerError(biosUs, longint(TimerCheckSeconds) * 1000000);
+  end;
   CheckStop;
 
   r.PeriodUs := MeasureRotation;
@@ -310,6 +317,10 @@ begin
            line.Value := TimerErrorText(r.TimerErr);
            if ( r.TimerErr = 0 ) then line.Note := 'against the CMOS clock'
            else line.Note := 'against the CMOS clock: corrected';
+           { The BIOS's count kept in step with the CMOS clock while the timer
+             isn't: worth knowing, since DOS's clock then hides the error }
+           if ( abs(r.BiosTimerErr - r.TimerErr) >= 10 ) then
+             line.Note := 'corrected; BIOS clock ' + TimerErrorText(r.BiosTimerErr);
          end;
        end;
     5: begin
