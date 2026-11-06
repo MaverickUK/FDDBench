@@ -19,9 +19,12 @@ uses
 
 type
   TScenarioKind = (scSpinUp, scRecalibrate, scSingleSteps, scShortSeeks, scFullStroke,
-                   scButterfly, scSequential, scRandom, scGameLoad);
+                   scButterfly, scSequential, scRandom, scGameLoad,
+                   scDiskChange, scWriteVerify);
 
-  TStepKind = (skRead, skReset, skWait);
+  { skWrite writes the test pattern; skVerify reads it back and compares;
+    skChange checks the disk-change line, skSwap asks for the disk to be swapped }
+  TStepKind = (skRead, skReset, skWait, skWrite, skVerify, skChange, skSwap);
 
   TStep = record
     Kind:TStepKind;
@@ -40,7 +43,9 @@ type
 
 const
   FirstScenario = scSpinUp;
-  LastScenario = scGameLoad;
+  LastScenario = scWriteVerify;
+  LastReadScenario = scGameLoad;   { "Run all" runs these: no writes, no questions }
+  WriteCylinders = 10;             { Write and verify uses the last ten cylinders }
   RandomReads = 200;
   GameFragments = 24;
 
@@ -52,6 +57,9 @@ function NextStep(var run:TScenarioRun; var step:TStep):boolean;
 { Logical sector (0 = cylinder 0, head 0, sector 1) to a position }
 procedure LogicalToCHS(logical:integer; var cylinder, head, sector:byte);
 function TotalSectors:integer;
+{ The test pattern: byte i of a sector, different for every sector and pass }
+function PatternByte(cylinder, head, sector:byte; i:integer; pass:byte):byte;
+function WritesDisk(kind:TScenarioKind):boolean;
 
 { --------- implementation --------- }
 implementation
@@ -59,7 +67,8 @@ implementation
 const
   Names: array[TScenarioKind] of string[20] = (
     'Spin-up and idle', 'Recalibrate', 'Single steps', 'Short seeks', 'Full stroke',
-    'Butterfly', 'Sequential read', 'Random read', 'Game loading');
+    'Butterfly', 'Sequential read', 'Random read', 'Game loading',
+    'Disk change', 'Write and verify');
   Hints: array[TScenarioKind] of string[60] = (
     'Spin-up, idle hum, then the BIOS stops the motor',
     'The head running back to cylinder 0',
@@ -69,7 +78,9 @@ const
     'Out and in, meeting in the middle',
     'Every track in order, as DISKCOPY reads',
     'Sectors all over the disk: a busy head',
-    'A fragmented program loading from floppy');
+    'A fragmented program loading from floppy',
+    'Eject and insert: does the PC see the change?',
+    'The last ten cylinders written, then read back');
   ShortSeekCylinders: array[0..11] of shortint = (0, 3, 0, 5, -2, 4, -4, 1, 6, -3, 2, 0);
   StepPauseMs = 400;
 
@@ -81,6 +92,25 @@ end;
 function ScenarioHint(kind:TScenarioKind):string;
 begin
   ScenarioHint := Hints[kind];
+end;
+
+function WritesDisk(kind:TScenarioKind):boolean;
+begin
+  WritesDisk := kind = scWriteVerify;
+end;
+
+function PatternByte(cylinder, head, sector:byte; i:integer; pass:byte):byte;
+const
+  Tag:string[8] = 'FDDBench';
+begin
+  if ( i < 8 ) then PatternByte := ord(Tag[i + 1])
+  else case i of
+    8: PatternByte := cylinder;
+    9: PatternByte := head;
+    10: PatternByte := sector;
+    11: PatternByte := pass;
+  else PatternByte := byte(cylinder * 7 + head * 13 + sector * 31 + i + pass * 101);
+  end;
 end;
 
 function TotalSectors:integer;
@@ -269,6 +299,28 @@ begin
 
     scGameLoad:
       more := GameLoadStep(run, step);
+
+    scDiskChange:
+      case i of
+        0: ReadOne(step, 0);
+        1: begin Wait(step, 0); step.Kind := skChange; end;  { Should be unchanged }
+        2: begin Wait(step, 0); step.Kind := skSwap; end;
+        3: begin Wait(step, 0); step.Kind := skChange; end;  { Should have changed }
+        4: ReadOne(step, 0);
+      else more := false;
+      end;
+
+    scWriteVerify:
+      begin
+        half := WriteCylinders;
+        if ( half > Geometry.Cylinders ) then half := Geometry.Cylinders;
+        track := i mod ( half * Geometry.Heads );
+        if ( i < 2 * half * Geometry.Heads ) then begin
+          Read(step, Geometry.Cylinders - half + track div Geometry.Heads, track mod Geometry.Heads, 1, Geometry.Sectors);
+          if ( i < half * Geometry.Heads ) then step.Kind := skWrite else step.Kind := skVerify;
+        end
+        else more := false;
+      end;
   end;
   if ( more ) then inc(run.Index);
   NextStep := more;

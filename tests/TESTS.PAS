@@ -161,9 +161,11 @@ begin
   allValid := true;
   while NextStep(run, step) do begin
     inc(n);
-    if ( step.Kind = skRead ) then begin
+    if ( step.Kind in [skRead, skVerify] ) then begin
       inc(reads);
       inc(sectors, step.Count);
+    end;
+    if ( step.Kind in [skRead, skWrite, skVerify] ) then begin
       if ( step.Cylinder >= Geometry.Cylinders ) or ( step.Head >= Geometry.Heads )
          or ( step.Sector < 1 ) or ( step.Count < 1 )
          or ( step.Sector + step.Count - 1 > Geometry.Sectors ) then allValid := false;
@@ -171,6 +173,52 @@ begin
     if ( n > 10000 ) then break;
   end;
   CountSteps := n;
+end;
+
+function Writes(kind:TScenarioKind):integer;
+var
+  run:TScenarioRun;
+  step:TStep;
+  n:integer;
+begin
+  StartScenario(run, kind);
+  n := 0;
+  while NextStep(run, step) do
+    if ( step.Kind = skWrite ) then inc(n);
+  Writes := n;
+end;
+
+procedure TestWriteVerify;
+var
+  run:TScenarioRun;
+  step:TStep;
+  writes, verifies, firstVerifyCyl:integer;
+begin
+  SetGeometry(80, 2, 18);
+  StartScenario(run, scWriteVerify);
+  writes := 0;
+  verifies := 0;
+  firstVerifyCyl := -1;
+  while NextStep(run, step) do begin
+    if ( step.Kind = skWrite ) then begin
+      inc(writes);
+      Check('writes only the last cylinders', step.Cylinder >= 80 - WriteCylinders);
+      Check('writes come first', verifies = 0);
+    end;
+    if ( step.Kind = skVerify ) then begin
+      if ( firstVerifyCyl < 0 ) then firstVerifyCyl := step.Cylinder;
+      inc(verifies);
+    end;
+  end;
+  CheckInt('tracks written', WriteCylinders * 2, writes);
+  CheckInt('tracks verified', WriteCylinders * 2, verifies);
+  CheckInt('verify starts where writing did', 80 - WriteCylinders, firstVerifyCyl);
+  Check('read scenarios write nothing', not WritesDisk(scSequential));
+
+  Check('pattern tag', PatternByte(1, 0, 1, 0, 0) = ord('F'));
+  Check('pattern names the sector', PatternByte(5, 1, 7, 10, 0) = 7);
+  Check('pattern differs by sector', PatternByte(5, 1, 7, 100, 0) <> PatternByte(5, 1, 8, 100, 0));
+  Check('pattern differs by pass', PatternByte(5, 1, 7, 100, 0) <> PatternByte(5, 1, 7, 100, 1));
 end;
 
 procedure TestScenarios;
@@ -190,6 +238,7 @@ begin
       CountSteps(kind, reads, sectors, valid);
       Check(ScenarioName(kind) + ' reads only real sectors (' + IntText(geometry) + ')', valid);
       Check(ScenarioName(kind) + ' reads something (' + IntText(geometry) + ')', reads > 0);
+      Check(ScenarioName(kind) + ' writes only if marked', WritesDisk(kind) = ( Writes(kind) > 0 ));
     end;
   end;
 
@@ -277,6 +326,7 @@ begin
   TestMarking;
   TestScenarios;
   TestRepeatable;
+  TestWriteVerify;
   TestButterflyOrder;
   TestLogical;
   TestMeasure;

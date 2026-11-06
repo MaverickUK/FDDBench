@@ -2,10 +2,11 @@ Program FDDBench;
 {-----------------------------
 FDDBench - floppy drive sounds and benchmark for DOS
 
-  FDDBENCH [A: | B:] [/AUTO] [/DUMP:file]
+  FDDBENCH [A: | B:] [/AUTO] [/WRITE] [/DUMP:file]
 
     A: B:       the drive to test (A: if left out)
-    /AUTO       run every scenario, then exit
+    /AUTO       run every read scenario and the benchmark, then exit
+    /WRITE      with /AUTO, also write and verify (no question asked)
     /DUMP:file  with /AUTO, save the final screen's text to a file
 
 Startup, the menu and running the scenarios. The scenarios themselves are
@@ -32,19 +33,22 @@ const
   LogName = 'FDDBENCH.LOG';
   MaxLogLines = 100;
   PauseBetweenMs = 1500;
-  MenuFooter = '1-9~scenario|  A~run all|  B~benchmark|  Esc~quit';
+  MenuFooter = '1-9 0 W~scenario|  A~run all|  B~benchmark|  Esc~quit';
   RunFooter = 'Esc~stop|  Space~pause';
 
 var
   Drive:byte;
   DriveLetter:char;
   Auto:boolean;
+  WritesAllowed:boolean;  { Asked once, or /WRITE }
+  WritePass:byte;         { In the pattern, so a verify can't pass on an earlier run's data }
+  ChangeSeen:byte;        { The last disk-change line reading }
   DumpFile:string;
   DriveText:string;
 
   { This scenario's figures }
   HeadCylinder:integer;   { -1 before the first read }
-  Steps, Seeks, Errors:longint;
+  Steps, Seeks, Errors, VerifyFailures:longint;
   BytesRead, BytesWritten:longint;
   Started:TTime;
   Stopped:boolean;
@@ -141,22 +145,29 @@ end;
 
 { ////////////////// Steps ////////////////// }
 
+procedure MoveHead(cylinder:byte);
+begin
+  if ( HeadCylinder >= 0 ) and ( HeadCylinder <> cylinder ) then begin
+    inc(Steps, abs(HeadCylinder - cylinder));
+    inc(Seeks);
+  end;
+  HeadCylinder := cylinder;
+end;
+
+procedure ShowPosition(var step:TStep; what:string);
+begin
+  Position := 'Cyl ' + PadRight(IntText(step.Cylinder), 3) + ' Head ' + IntText(step.Head) + '  Sector ' + IntText(step.Sector);
+  if ( step.Count > 1 ) then Position := Position + '-' + IntText(step.Sector + step.Count - 1);
+  Operation := what;
+end;
+
 procedure DoRead(var step:TStep);
 var
   fromCell, toCell, cell:integer;
   status:byte;
-  last:byte;
 begin
-  if ( HeadCylinder >= 0 ) and ( HeadCylinder <> step.Cylinder ) then begin
-    inc(Steps, abs(HeadCylinder - step.Cylinder));
-    inc(Seeks);
-  end;
-  HeadCylinder := step.Cylinder;
-
-  last := step.Sector + step.Count - 1;
-  Position := 'Cyl ' + PadRight(IntText(step.Cylinder), 3) + ' Head ' + IntText(step.Head) + '  Sector ' + IntText(step.Sector);
-  if ( step.Count > 1 ) then Position := Position + '-' + IntText(last);
-  Operation := 'Reading';
+  MoveHead(step.Cylinder);
+  ShowPosition(step, 'Reading');
   CellRange(step.Cylinder, step.Head, step.Sector, step.Count, fromCell, toCell);
   DrawHead(fromCell, toCell);
   ShowStatus;
@@ -173,6 +184,107 @@ begin
         + '+' + IntText(step.Count) + ': ' + StatusText(status));
   end;
   for cell := fromCell to toCell do DrawCell(cell);
+end;
+
+procedure DoWrite(var step:TStep);
+var
+  fromCell, toCell, cell, s, i:integer;
+  status:byte;
+begin
+  MoveHead(step.Cylinder);
+  ShowPosition(step, 'Writing');
+  for s := 0 to step.Count - 1 do
+    for i := 0 to SectorBytes - 1 do
+      Buffer^[s * SectorBytes + i] := PatternByte(step.Cylinder, step.Head, step.Sector + s, i, WritePass);
+  CellRange(step.Cylinder, step.Head, step.Sector, step.Count, fromCell, toCell);
+  DrawHead(fromCell, toCell);
+  ShowStatus;
+
+  status := WriteSectors(Drive, step.Cylinder, step.Head, step.Sector, step.Count);
+  if ( status = 0 ) then begin
+    MarkSectors(step.Cylinder, step.Head, step.Sector, step.Count, csWritten);
+    inc(BytesWritten, longint(step.Count) * SectorBytes);
+  end
+  else begin
+    MarkSectors(step.Cylinder, step.Head, step.Sector, step.Count, csError);
+    inc(Errors);
+    Log('  write C' + IntText(step.Cylinder) + ' H' + IntText(step.Head) + ': ' + StatusText(status));
+    if ( status = 3 ) then begin
+      DrawStatus(2, 'The disk is write-protected: slide the tab over the hole to write to it.');
+      Stopped := true;
+    end;
+  end;
+  for cell := fromCell to toCell do DrawCell(cell);
+end;
+
+procedure DoVerify(var step:TStep);
+var
+  fromCell, toCell, cell, s, i:integer;
+  status:byte;
+  bad:boolean;
+begin
+  MoveHead(step.Cylinder);
+  ShowPosition(step, 'Verifying');
+  CellRange(step.Cylinder, step.Head, step.Sector, step.Count, fromCell, toCell);
+  DrawHead(fromCell, toCell);
+  ShowStatus;
+
+  status := ReadSectors(Drive, step.Cylinder, step.Head, step.Sector, step.Count);
+  if ( status <> 0 ) then begin
+    MarkSectors(step.Cylinder, step.Head, step.Sector, step.Count, csError);
+    inc(Errors);
+    Log('  verify C' + IntText(step.Cylinder) + ' H' + IntText(step.Head) + ': ' + StatusText(status));
+  end
+  else begin
+    inc(BytesRead, longint(step.Count) * SectorBytes);
+    for s := 0 to step.Count - 1 do begin
+      bad := false;
+      for i := 0 to SectorBytes - 1 do
+        if ( Buffer^[s * SectorBytes + i] <> PatternByte(step.Cylinder, step.Head, step.Sector + s, i, WritePass) ) then
+          bad := true;
+      if ( bad ) then begin
+        MarkSectors(step.Cylinder, step.Head, step.Sector + s, 1, csError);
+        inc(VerifyFailures);
+        Log('  verify C' + IntText(step.Cylinder) + ' H' + IntText(step.Head) + ' S' + IntText(step.Sector + s)
+            + ': read back different');
+      end
+      else
+        MarkSectors(step.Cylinder, step.Head, step.Sector + s, 1, csRead);
+    end;
+  end;
+  for cell := fromCell to toCell do DrawCell(cell);
+end;
+
+procedure DoChange;
+var
+  status:byte;
+  text:string;
+begin
+  Operation := 'Change line';
+  ShowStatus;
+  status := ChangeLine(Drive);
+  case status of
+    0: text := 'not changed';
+    6: text := 'CHANGED';
+  else text := 'no change line (' + StatusText(status) + ')';
+  end;
+  DrawStatus(2, 'Disk-change line: ' + text);
+  Log('  disk-change line: ' + text);
+  ChangeSeen := status;
+end;
+
+procedure DoSwap;
+var
+  c:char;
+begin
+  Operation := 'Waiting for you';
+  ShowStatus;
+  DrawStatus(2, 'Eject the disk and put it back (or another), then press a key.');
+  DrawFooter('Any key~when the disk is back|  Esc~stop');
+  c := ReadKey;
+  if ( c = #0 ) then ReadKey;
+  if ( c = #27 ) then Stopped := true;
+  DrawFooter(RunFooter);
 end;
 
 procedure DoWait(ms:word);
@@ -201,6 +313,30 @@ begin
   HeadCylinder := 0;  { The BIOS recalibrates: the next read seeks from cylinder 0 }
 end;
 
+{ ////////////////// Writes ////////////////// }
+
+function ConfirmWrites:boolean;
+var
+  c:char;
+  first:integer;
+begin
+  ConfirmWrites := WritesAllowed;
+  if ( WritesAllowed ) then exit;
+  first := Geometry.Cylinders - WriteCylinders;
+  if ( first < 0 ) then first := 0;
+  DrawHeading('Write and verify: this writes to the disk');
+  DrawStatus(0, 'This writes over cylinders ' + IntText(first) + '-' + IntText(Geometry.Cylinders - 1) + ' of the disk in '
+             + DriveLetter + ':. Anything there is lost.');
+  DrawStatus(1, 'Use a disk you don''t need. Write to it?');
+  DrawStatus(2, '');
+  DrawFooter('Y~write, and don''t ask again|  any other key~cancel');
+  c := UpCase(ReadKey);
+  if ( c = #0 ) then ReadKey;
+  WritesAllowed := c = 'Y';
+  if ( WritesAllowed ) then Log('Writes allowed');
+  ConfirmWrites := WritesAllowed;
+end;
+
 { ////////////////// Scenarios ////////////////// }
 
 function RunScenario(kind:TScenarioKind):boolean;
@@ -214,9 +350,15 @@ begin
   DrawHeading(ScenarioName(kind) + ': ' + ScenarioHint(kind));
   DrawFooter(RunFooter);
   ShowLegend;
+  if WritesDisk(kind) and not ConfirmWrites then begin
+    RunScenario := true;
+    exit;
+  end;
+  if WritesDisk(kind) then inc(WritePass);
   Steps := 0;
   Seeks := 0;
   Errors := 0;
+  VerifyFailures := 0;
   BytesRead := 0;
   BytesWritten := 0;
   Stopped := false;
@@ -231,6 +373,10 @@ begin
       skRead: DoRead(step);
       skWait: DoWait(step.WaitMs);
       skReset: DoReset;
+      skWrite: DoWrite(step);
+      skVerify: DoVerify(step);
+      skChange: DoChange;
+      skSwap: DoSwap;
     end;
     CheckKeys;
   end;
@@ -241,6 +387,18 @@ begin
   ShowStatus;
   Log(ScenarioName(kind) + ': ' + Operation + ' in ' + ElapsedText(ms) + ', read ' + KBText(BytesRead) + ', ' + IntText(Seeks) + ' seeks, ' + IntText(Steps) + ' steps, ' + IntText(Errors) + ' errors, '
       + SpeedText(BytesRead + BytesWritten, ms));
+  if WritesDisk(kind) then begin
+    Log('  written ' + KBText(BytesWritten) + ', ' + IntText(VerifyFailures) + ' sectors read back different');
+    if ( VerifyFailures = 0 ) and ( Errors = 0 ) and not Stopped then
+      DrawStatus(2, 'Every sector read back as written.')
+    else if ( VerifyFailures > 0 ) then
+      DrawStatus(2, IntText(VerifyFailures) + ' sectors read back different: see the log.');
+  end;
+  if ( kind = scDiskChange ) and not Stopped then begin
+    if ( ChangeSeen = 6 ) then DrawStatus(2, 'The PC saw the disk change.')
+    else DrawStatus(2, 'The PC did NOT see the disk change: check pin 34 (DISK CHANGE).');
+    Log('  ' + Copy('NOT ', 1, 4 * ord(ChangeSeen <> 6)) + 'seen');
+  end;
   FlushLog;
   RunScenario := not Stopped;
 end;
@@ -251,9 +409,9 @@ var
   t:TTime;
 begin
   Log('Run all: start');
-  for kind := FirstScenario to LastScenario do begin
+  for kind := FirstScenario to LastReadScenario do begin
     if not RunScenario(kind) then break;
-    if ( kind <> LastScenario ) then begin
+    if ( kind <> LastReadScenario ) then begin
       GetTime(t);
       while ( SinceMs(t) < PauseBetweenMs ) do ;
     end;
@@ -297,6 +455,15 @@ end;
 
 { ////////////////// Menu ////////////////// }
 
+function KeyFor(kind:TScenarioKind):char;
+begin
+  case kind of
+    scDiskChange: KeyFor := '0';
+    scWriteVerify: KeyFor := 'W';
+  else KeyFor := chr(ord('1') + ord(kind));
+  end;
+end;
+
 procedure ShowMenu;
 var
   kind:TScenarioKind;
@@ -308,13 +475,12 @@ begin
   n := 0;
   for kind := FirstScenario to LastScenario do begin
     inc(n);
-    line := line + PadRight(IntText(n) + ' ' + ScenarioName(kind), 19);
-    if ( n mod 4 = 0 ) then begin
-      DrawStatus(n div 4 - 1, line);
+    line := line + PadRight(KeyFor(kind) + ' ' + ScenarioName(kind), 19);
+    if ( n mod 4 = 0 ) or ( kind = LastScenario ) then begin
+      DrawStatus(( n - 1 ) div 4, line);
       line := '';
     end;
   end;
-  DrawStatus(2, line + PadRight('A Run all', 19) + 'B Benchmark');
   DrawFooter(MenuFooter);
 end;
 
@@ -329,8 +495,10 @@ begin
     if ( c = #0 ) then begin ReadKey; continue; end;
     if ( c >= '1' ) and ( c <= '9' ) then begin
       n := ord(c) - ord('1');
-      if ( n <= ord(LastScenario) ) then RunScenario(TScenarioKind(n));
+      if ( n <= ord(LastReadScenario) ) then RunScenario(TScenarioKind(n));
     end
+    else if ( c = '0' ) then RunScenario(scDiskChange)
+    else if ( c = 'W' ) then RunScenario(scWriteVerify)
     else if ( c = 'A' ) then RunAll
     else if ( c = 'B' ) then begin
       RunBench;
@@ -353,6 +521,7 @@ begin
   Drive := 0;
   DriveLetter := 'A';
   Auto := false;
+  WritesAllowed := false;
   DumpFile := '';
   for i := 1 to ParamCount do begin
     p := ParamStr(i);
@@ -360,6 +529,7 @@ begin
     if ( p = 'B:' ) or ( p = 'B' ) then begin Drive := 1; DriveLetter := 'B'; end
     else if ( p = 'A:' ) or ( p = 'A' ) then begin Drive := 0; DriveLetter := 'A'; end
     else if ( p = '/AUTO' ) then Auto := true
+    else if ( p = '/WRITE' ) then WritesAllowed := true
     else if ( copy(p, 1, 6) = '/DUMP:' ) then DumpFile := copy(ParamStr(i), 7, 255);
   end;
 end;
@@ -403,6 +573,7 @@ end;
 
 var
   c:char;
+  h, m, s, hund:word;
 begin
   ParseCommandLine;
   LogPath := ProgramDir + LogName;
@@ -440,8 +611,11 @@ begin
   DrawTitle(DriveText);
   DrawMap;
 
+  Dos.GetTime(h, m, s, hund);
+  WritePass := byte(s * 100 + hund);
   if ( Auto ) then begin
     RunAll;
+    if ( WritesAllowed ) then RunScenario(scWriteVerify);
     RunBench;
     if ( length(DumpFile) > 0 ) then SaveScreenText(DumpFile);
   end

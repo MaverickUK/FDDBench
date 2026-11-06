@@ -20,12 +20,14 @@ extra=(-fastlaunch -nomenu -time-limit 300)
 case "$(basename "$dosbox")" in dosbox) extra=() ;; esac
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy $(command -v timeout >/dev/null && echo timeout 360) "$dosbox" "${extra[@]}" \
   -c "imgmount a build/disk144.img -t floppy" -c "mount c build/dos" -c "c:" \
-  -c "FDDBENCH A: /AUTO /DUMP:SCREEN.TXT" -c "exit" > build/dosbox.log 2>&1 || true
+  -c "FDDBENCH A: /AUTO /WRITE /DUMP:SCREEN.TXT" -c "exit" > build/dosbox.log 2>&1 || true
 
 echo "== FDDBENCH.LOG"; cat build/dos/FDDBENCH.LOG
 echo "== SCREEN.TXT"; cat build/dos/SCREEN.TXT
 fail=0
 grep -q "Run all: end" build/dos/FDDBENCH.LOG || { echo "FAIL: the run didn't finish"; fail=1; }
+grep -q "Write and verify: Done" build/dos/FDDBENCH.LOG || { echo "FAIL: write and verify didn't finish"; fail=1; }
+grep -q " 0 sectors read back different" build/dos/FDDBENCH.LOG || { echo "FAIL: written sectors read back different"; fail=1; }
 grep -q "Game loading: Done" build/dos/FDDBENCH.LOG || { echo "FAIL: the last scenario didn't finish"; fail=1; }
 if grep -E "[1-9][0-9]* errors" build/dos/FDDBENCH.LOG; then echo "FAIL: read errors"; fail=1; fi
 grep -q "Benchmark results" build/dos/SCREEN.TXT || { echo "FAIL: no benchmark results on the final screen"; fail=1; }

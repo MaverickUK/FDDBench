@@ -9,7 +9,7 @@ It was written to show how realistic [FDDSynthPro](https://github.com/MaverickUK
 ## Running it
 
 ```
-FDDBENCH [A: | B:] [/AUTO] [/DUMP:file]
+FDDBENCH [A: | B:] [/AUTO] [/WRITE] [/DUMP:file]
 ```
 
 Put any formatted disk in the drive and run `FDDBENCH` (drive A: unless you name B:). Press **1** to **9** for a scenario, **A** to run them all, **B** for the benchmark, **Esc** to stop one or to quit, **Space** to pause.
@@ -25,8 +25,12 @@ Put any formatted disk in the drive and run `FDDBENCH` (drive A: unless you name
 | 7 | Sequential read | Every track in order, as DISKCOPY reads |
 | 8 | Random read | Sectors all over the disk: a busy head |
 | 9 | Game loading | A fragmented program loading from floppy |
+| 0 | Disk change | Eject and insert: does the PC see the change? |
+| W | Write and verify | The last ten cylinders written, then read back |
 
-The scenarios only read, through the BIOS, so the disk's contents don't matter and nothing on it changes. Each one visits the same sectors every time it runs, so it sounds the same every time.
+Scenarios 1 to 9 only read, through the BIOS, so the disk's contents don't matter and nothing on it changes; **A** runs them all. Each one visits the same sectors every time it runs, so it sounds the same every time.
+
+**Write and verify writes over the last ten cylinders of the disk**: use a disk you don't need. It says so and asks before the first write. Each sector gets a pattern naming its cylinder, head and sector, different every run, and is read back and compared: written cells turn yellow, then green once they read back as written.
 
 In the map, each cell is three sectors of one track; each group of cells is a cylinder (head 0, then head 1 in cyan), and each row starts with its first cylinder's number. Green is read, a flashing cell is where the head is now, and a red X is a sector the BIOS couldn't read.
 
@@ -49,13 +53,13 @@ Run it on the same PC with a real drive and with an emulated one to compare them
 
 ## Unattended runs
 
-`/AUTO` runs every scenario and the benchmark, then exits; `/DUMP:file` then saves the final screen's text (the smoke test uses both).
+`/AUTO` runs the read scenarios and the benchmark, then exits (`/WRITE` adds write and verify, without asking); `/DUMP:file` then saves the final screen's text (the smoke test uses both).
 
 It runs on any PC from an 8088 up, in text mode, on CGA, EGA, VGA or MDA.
 
 ## Status
 
-Version 0.2.0 has the read scenarios, the map and the benchmark. Next, from the [design](DESIGN.md): write scenarios behind a warning, the disk-change check, then themes and help.
+Version 0.3.0 has the scenarios, the map, the benchmark, write and verify, and the disk-change check. Next, from the [design](DESIGN.md): themes, help, and a demo video.
 
 ## Building
 

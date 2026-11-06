@@ -4,6 +4,16 @@ All notable changes to FDDBench. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-06
+
+### Added
+- **Write and verify (W):** writes a test pattern over the last ten cylinders, a track at a time, then reads it back and compares. Each sector's pattern names its cylinder, head and sector and changes every run, so stale data can't pass. Written cells turn yellow, then green once they read back as written; a sector that reads back different is a red X and a log line. Before the first write it says which cylinders it will write over and asks; the answer holds until FDDBench exits. A write-protected disk stops it with a message.
+- **Disk change (0):** reads the disk-change line, asks for the disk to be ejected and put back, and reads it again: says whether the PC saw the change (pin 34 on a PC drive).
+- `/WRITE`: with `/AUTO`, also write and verify, without asking.
+
+### Changed
+- "Run all" runs the nine read scenarios only: no writes, no questions.
+
 ## [0.2.0] - 2026-11-06
 
 ### Added
