@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq fpc dosbox mtools
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq fpc nasm dosbox mtools zip
 
       - name: Cache i8086-msdos cross compiler
         id: cache

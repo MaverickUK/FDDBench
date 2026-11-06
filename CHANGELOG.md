@@ -4,6 +4,11 @@ All notable changes to FDDBench. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-11-06
+
+### Fixed
+- CI installs NASM, which building the cross compiler needs, so releases build. 0.3.1 was tagged but never released.
+
 ## [0.3.1] - 2026-11-06
 
 ### Fixed

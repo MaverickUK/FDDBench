@@ -61,7 +61,7 @@ It runs on any PC from an 8088 up, in text mode, on CGA, EGA, VGA or MDA.
 
 ## Status
 
-Version 0.3.1 has the scenarios, the map, the benchmark, write and verify, and the disk-change check. Next, from the [design](DESIGN.md): themes, help, and a demo video.
+Version 0.3.2 has the scenarios, the map, the benchmark, write and verify, and the disk-change check. Next, from the [design](DESIGN.md): themes, help, and a demo video.
 
 ## Building
 
