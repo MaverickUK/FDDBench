@@ -345,16 +345,17 @@ var
   step:TStep;
   ms:longint;
 begin
-  ClearCells;
-  DrawMap;
-  DrawHeading(ScenarioName(kind) + ': ' + ScenarioHint(kind));
-  DrawFooter(RunFooter);
-  ShowLegend;
+  { Ask before drawing the scenario, so its own heading replaces the question }
   if WritesDisk(kind) and not ConfirmWrites then begin
     RunScenario := true;
     exit;
   end;
   if WritesDisk(kind) then inc(WritePass);
+  ClearCells;
+  DrawMap;
+  DrawHeading(ScenarioName(kind) + ': ' + ScenarioHint(kind));
+  DrawFooter(RunFooter);
+  ShowLegend;
   Steps := 0;
   Seeks := 0;
   Errors := 0;
@@ -431,7 +432,7 @@ var
 begin
   DrawHeading('Benchmark: rotation, seeks, access and throughput');
   DrawFooter('Esc~stop');
-  DrawStatus(1, 'Times run from one read finishing to the next, so they include the PC''s own delays');
+  DrawStatus(1, 'Each time runs from one read finishing to the next.');
   DrawStatus(2, '');
   Log('Benchmark: start');
   RunBenchmark(Drive, r);
@@ -506,6 +507,7 @@ begin
       c := ReadKey;
       if ( c = #0 ) then ReadKey;
       c := ' ';
+      ClearCells;  { The benchmark's reads aren't a scenario's result }
       DrawMap;
     end;
   until c = #27;

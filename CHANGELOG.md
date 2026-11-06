@@ -4,6 +4,16 @@ All notable changes to FDDBench. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-06
+
+### Fixed
+- Write and verify kept the question's heading ("this writes to the disk") while it ran, instead of its own.
+- Back at the menu after the benchmark, the map still showed the benchmark's reads.
+- The benchmark's explanation was cut off at the right of the screen.
+
+### Added
+- A demo video in the README, recorded in DOSBox-X by `scripts/record-demo.sh`.
+
 ## [0.3.0] - 2026-11-06
 
 ### Added

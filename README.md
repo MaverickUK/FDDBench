@@ -2,7 +2,9 @@
 
 **Floppy drive sounds and benchmark for DOS.** FDDBench runs a series of operations on a floppy drive, each chosen for how it sounds: spin-up, single steps, seeks short and long, whole-disk reads, a program loading. As it goes, a disk map in the style of Norton's disk tools shows every sector being read.
 
-![FDDBench showing the game loading scenario: a disk map of a 1.44 MB disk, with the sectors read so far in green](docs/fddbench-game-loading.png)
+[![FDDBench demo: single steps, game loading, a sequential read, write and verify, and the benchmark](docs/fddbench-demo.gif)](docs/fddbench-demo.mp4)
+
+*FDDBench 0.3.1 in DOSBox-X: the menu, single steps, a fragmented program loading, part of a sequential read, write and verify (sped up 3x) turning the last ten cylinders yellow and then green, and the benchmark (sped up 6x) and its results. DOSBox's floppy isn't timed like a real drive, which the benchmark points out. [Watch as MP4](docs/fddbench-demo.mp4).*
 
 It was written to show how realistic [FDDSynthPro](https://github.com/MaverickUK/FDDSynthPro), a floppy drive emulator that plays a real drive's sounds, sounds on a real PC. It works with any drive, real or emulated, so the same run can compare the two. The look is [GameMinder](https://github.com/MaverickUK/GameMinder)'s.
 
@@ -59,11 +61,11 @@ It runs on any PC from an 8088 up, in text mode, on CGA, EGA, VGA or MDA.
 
 ## Status
 
-Version 0.3.0 has the scenarios, the map, the benchmark, write and verify, and the disk-change check. Next, from the [design](DESIGN.md): themes, help, and a demo video.
+Version 0.3.1 has the scenarios, the map, the benchmark, write and verify, and the disk-change check. Next, from the [design](DESIGN.md): themes, help, and a demo video.
 
 ## Building
 
-See [BUILD.md](BUILD.md).
+See [BUILD.md](BUILD.md). `scripts/record-demo.sh` records the video above.
 
 ## Licence
 
