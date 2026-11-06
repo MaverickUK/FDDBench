@@ -23,6 +23,7 @@ uses
     Measure,
     Timer,
     BiosDisk,
+    Bench,
     View;
 
 {$I VERSION.INC}
@@ -31,7 +32,7 @@ const
   LogName = 'FDDBENCH.LOG';
   MaxLogLines = 100;
   PauseBetweenMs = 1500;
-  MenuFooter = '1-9~scenario|  A~run all|  Esc~quit';
+  MenuFooter = '1-9~scenario|  A~run all|  B~benchmark|  Esc~quit';
   RunFooter = 'Esc~stop|  Space~pause';
 
 var
@@ -261,6 +262,39 @@ begin
   FlushLog;
 end;
 
+{ ////////////////// Benchmark ////////////////// }
+
+procedure RunBench;
+var
+  r:TBenchResult;
+  line:TResultLine;
+  i:integer;
+  text:string;
+begin
+  DrawHeading('Benchmark: rotation, seeks, access and throughput');
+  DrawFooter('Esc~stop');
+  DrawStatus(1, 'Times run from one read finishing to the next, so they include the PC''s own delays');
+  DrawStatus(2, '');
+  Log('Benchmark: start');
+  RunBenchmark(Drive, r);
+
+  ClearMapArea;
+  if ( r.Complete ) then text := 'Benchmark results' else text := 'Benchmark results (stopped)';
+  DrawMapText(1, text, ColHeadingText);
+  DrawMapText(2, DriveText, ColLabel);
+  for i := 0 to ResultLines - 1 do begin
+    GetResultLine(r, i, line);
+    DrawMapText(4 + i * 2, PadRight(line.Name, 22) + PadRight(line.Value, 16) + line.Note, ColText);
+    Log('  ' + PadRight(line.Name, 20) + PadRight(line.Value, 14) + line.Note);
+  end;
+  DrawMapText(5 + ResultLines * 2, 'Seek times are to the nearest sector: the gap from one read to the next.', ColNotYet);
+  Log('Benchmark: ' + text);
+  FlushLog;
+  DrawHeading('Benchmark results');
+  DrawStatus(0, '');
+  DrawStatus(1, '');
+end;
+
 { ////////////////// Menu ////////////////// }
 
 procedure ShowMenu;
@@ -280,7 +314,7 @@ begin
       line := '';
     end;
   end;
-  DrawStatus(2, line + 'A Run all');
+  DrawStatus(2, line + PadRight('A Run all', 19) + 'B Benchmark');
   DrawFooter(MenuFooter);
 end;
 
@@ -297,7 +331,15 @@ begin
       n := ord(c) - ord('1');
       if ( n <= ord(LastScenario) ) then RunScenario(TScenarioKind(n));
     end
-    else if ( c = 'A' ) then RunAll;
+    else if ( c = 'A' ) then RunAll
+    else if ( c = 'B' ) then begin
+      RunBench;
+      DrawFooter('Any key~for the menu');
+      c := ReadKey;
+      if ( c = #0 ) then ReadKey;
+      c := ' ';
+      DrawMap;
+    end;
   until c = #27;
 end;
 
@@ -400,6 +442,7 @@ begin
 
   if ( Auto ) then begin
     RunAll;
+    RunBench;
     if ( length(DumpFile) > 0 ) then SaveScreenText(DumpFile);
   end
   else

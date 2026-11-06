@@ -24,6 +24,8 @@ function SpeedText(bytes, ms:longint):string;
 function ElapsedText(ms:longint):string;
 function MsText(us:longint):string;
 function RpmText(periodUs:longint):string;
+{ A time in revolutions: "1.05 rev" }
+function RevsText(us, periodUs:longint):string;
 function MedianOf3(a, b, c:longint):longint;
 { The median of the first n values; sorts them }
 function Median(var values:array of longint; n:integer):longint;
@@ -108,6 +110,18 @@ begin
     RpmText := '-'
   else
     RpmText := TenthsText(( 600000000 + periodUs div 2 ) div periodUs);
+end;
+
+function RevsText(us, periodUs:longint):string;
+var
+  hundredths:longint;
+begin
+  if ( periodUs <= 0 ) then begin
+    RevsText := '-';
+    exit;
+  end;
+  hundredths := ( us * 100 + periodUs div 2 ) div periodUs;
+  RevsText := IntText(hundredths div 100) + '.' + Pad2(hundredths mod 100) + ' rev';
 end;
 
 function MedianOf3(a, b, c:longint):longint;

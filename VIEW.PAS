@@ -54,6 +54,9 @@ procedure DrawCell(cell:integer);
 procedure DrawHead(fromCell, toCell:integer);
 procedure DrawHeading(text:string);
 procedure DrawStatus(line:byte; text:string);
+{ Text over the map's area, which ClearMapArea empties }
+procedure ClearMapArea;
+procedure DrawMapText(row:byte; text:string; colour:byte);
 procedure DrawFooter(text:string);
 procedure SaveScreenText(fileName:string);
 
@@ -245,6 +248,20 @@ procedure DrawStatus(line:byte; text:string);
 begin
   if ( length(text) > 77 ) then text[0] := #77;
   Put(3, StatusRow + line, text + Repeated(' ', 77 - length(text)), Attr(ColText, ColBackground));
+end;
+
+procedure ClearMapArea;
+var
+  y:byte;
+begin
+  for y := 3 to HeadingRow - 1 do
+    Put(2, y, Repeated(' ', 78), Attr(ColText, ColBackground));
+end;
+
+procedure DrawMapText(row:byte; text:string; colour:byte);
+begin
+  if ( length(text) > 74 ) then text[0] := #74;
+  Put(4, 3 + row, text, Attr(colour, ColBackground));
 end;
 
 { Keys in yellow, their meaning in white: "Esc~stop  1-9~scenario" }

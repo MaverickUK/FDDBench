@@ -12,7 +12,7 @@ It was written to show how realistic [FDDSynthPro](https://github.com/MaverickUK
 FDDBENCH [A: | B:] [/AUTO] [/DUMP:file]
 ```
 
-Put any formatted disk in the drive and run `FDDBENCH` (drive A: unless you name B:). Press **1** to **9** for a scenario, **A** to run them all, **Esc** to stop one or to quit, **Space** to pause.
+Put any formatted disk in the drive and run `FDDBENCH` (drive A: unless you name B:). Press **1** to **9** for a scenario, **A** to run them all, **B** for the benchmark, **Esc** to stop one or to quit, **Space** to pause.
 
 | | Scenario | What to listen for |
 |---|---|---|
@@ -32,13 +32,30 @@ In the map, each cell is three sectors of one track; each group of cells is a cy
 
 Every run is logged to `FDDBENCH.LOG` beside the program, with the time of day, to line up with the drive's own log. The log is written between scenarios, never during one, so it doesn't add seeks of its own.
 
-`/AUTO` runs every scenario and exits; `/DUMP:file` then saves the final screen's text (the smoke test uses both).
+## The benchmark
+
+**B** measures what the drive and the PC give together. A floppy can't say when a seek has finished, so every figure is the time from one read finishing to the next:
+
+| | How | A real drive |
+|---|---|---|
+| Rotation | 20 reads of the same sector: each waits one revolution | 300 RPM (360 for a 1.2 MB 5.25") |
+| Sequential read | The whole disk, a track a read | Close to 1 revolution a track, plus the steps |
+| Track-to-track | Sector 1 on one cylinder, then each sector in turn on the next: the shortest gap | The PC's step rate and head settle time, to a sector |
+| Full stroke | The same, first cylinder to last | |
+| Average access | 50 random single sectors | About half a revolution plus the seek |
+| Errors / retries | Reads the BIOS gave up on, and those that needed a second try | 0 / 0 |
+
+Run it on the same PC with a real drive and with an emulated one to compare them: a slow track change or a missed revolution shows up in the sequential read's revolutions a track.
+
+## Unattended runs
+
+`/AUTO` runs every scenario and the benchmark, then exits; `/DUMP:file` then saves the final screen's text (the smoke test uses both).
 
 It runs on any PC from an 8088 up, in text mode, on CGA, EGA, VGA or MDA.
 
 ## Status
 
-Version 0.1.0 has the read scenarios and the map. Next, from the [design](DESIGN.md): the benchmark (RPM, track-to-track and full-stroke seek times, access time, throughput), then write scenarios behind a warning, then themes and help.
+Version 0.2.0 has the read scenarios, the map and the benchmark. Next, from the [design](DESIGN.md): write scenarios behind a warning, the disk-change check, then themes and help.
 
 ## Building
 

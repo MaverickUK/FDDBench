@@ -259,6 +259,9 @@ begin
   CheckStr('ms big', '200.0 ms', MsText(200000));
   CheckStr('rpm', '300.0', RpmText(200000));
   CheckStr('rpm 360', '360.0', RpmText(166667));
+  CheckStr('revs', '1.05 rev', RevsText(210000, 200000));
+  CheckStr('revs small', '0.11 rev', RevsText(22222, 200000));
+  CheckStr('revs no period', '-', RevsText(1000, 0));
   CheckInt('ticks to us', 54925, TimeDiffUs(10, 0, 11, 0));
   CheckInt('counts to us', 838, TimeDiffUs(10, 0, 10, 1000));
   CheckInt('midnight', 54925, TimeDiffUs(1573039, 0, 0, 0));

@@ -35,6 +35,7 @@ The units are smart-linked (`-CX -XX`), so programs link with `-XX` too.
 | `FDDBENCH.PAS` | Startup, command line, menu, running scenarios, the log |
 | `SCENARIO.PAS` | The scenarios, as steps worked out from the disk's geometry |
 | `DISKMAP.PAS` | The map's layout and each cell's state |
+| `BENCH.PAS` | The benchmark: rotation, seeks, access, sequential read |
 | `MEASURE.PAS` | Timing arithmetic and the text for speeds, times, RPM |
 | `VIEW.PAS` | The screen: frame, map, heading, status, footer |
 | `BIOSDISK.PAS` | INT 13h: reset, read, write, geometry, disk change; the DMA-safe buffer |

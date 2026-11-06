@@ -28,6 +28,7 @@ fail=0
 grep -q "Run all: end" build/dos/FDDBENCH.LOG || { echo "FAIL: the run didn't finish"; fail=1; }
 grep -q "Game loading: Done" build/dos/FDDBENCH.LOG || { echo "FAIL: the last scenario didn't finish"; fail=1; }
 if grep -E "[1-9][0-9]* errors" build/dos/FDDBENCH.LOG; then echo "FAIL: read errors"; fail=1; fi
-grep -q "C75" build/dos/SCREEN.TXT || { echo "FAIL: no map on the final screen"; fail=1; }
+grep -q "Benchmark results" build/dos/SCREEN.TXT || { echo "FAIL: no benchmark results on the final screen"; fail=1; }
+grep -q "Benchmark: Benchmark results" build/dos/FDDBENCH.LOG || { echo "FAIL: the benchmark didn't finish"; fail=1; }
 [ $fail = 0 ] && echo "smoke: OK"
 exit $fail
